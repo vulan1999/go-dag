@@ -3,9 +3,11 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(10 * time.Second)
 	response := map[string]string{
 		"status": "ok",
 	}
