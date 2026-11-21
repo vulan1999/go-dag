@@ -22,6 +22,7 @@ func New(addr string) *Server {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("/", homeHandler)
 
 	return &Server{
 		&http.Server{
