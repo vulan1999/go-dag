@@ -7,6 +7,7 @@ import (
 )
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Set 10 second timeout for testing graceful shutdown
 	time.Sleep(10 * time.Second)
 	response := map[string]string{
 		"status": "ok",

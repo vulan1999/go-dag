@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -11,16 +13,22 @@ type Server struct {
 }
 
 func New(addr string) *Server {
+	readHeaderTimeout, _ := strconv.Atoi(GetEnvValue("READ_HEADER_TIMEOUT", "20"))
+	writeTimeout, _ := strconv.Atoi(GetEnvValue("WRITE_TIMEOUT", "20"))
+
+	if readHeaderTimeout <= 0 || writeTimeout <= 0 {
+		log.Fatal("Invalid Read Header Timeout or Write Timeout, it must be a positive integer value and greater than 0")
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 
-	serverAddr := ":" + addr
 	return &Server{
 		&http.Server{
-			Addr:              serverAddr,
+			Addr:              addr,
 			Handler:           mux,
-			ReadHeaderTimeout: 20 * time.Second,
-			WriteTimeout:      20 * time.Second,
+			ReadHeaderTimeout: time.Duration(readHeaderTimeout) * time.Second,
+			WriteTimeout:      time.Duration(writeTimeout) * time.Second,
 		},
 	}
 }

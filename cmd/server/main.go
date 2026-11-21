@@ -25,14 +25,14 @@ func main() {
 	serverPort := server.GetEnvValue("PORT", "8080")
 	serverCancleTimeout, err := strconv.Atoi(server.GetEnvValue("SERVER_CANCLE_TIMEOUT", "20"))
 
-	if err != nil {
-		log.Fatalf("Invalid server cancle timeout second, please set back the SERVER_CANCLE_TIMEOUT variable")
+	if err != nil || serverCancleTimeout <= 0 {
+		log.Fatalf("Invalid server cancle timeout second, the value of SERVER_CANCLE_TIMEOUT variable must be a positive integer and greater than 0")
 	}
 
-	server := server.New(serverPort)
+	server := server.New(":" + serverPort)
 
 	go func() {
-		log.Println("Listening on port :8080")
+		log.Printf("Listening on port :%s", serverPort)
 		if err := server.Start(); err != nil {
 			log.Printf("Fail to start server: %v", err)
 		}
