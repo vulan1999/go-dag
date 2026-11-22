@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/vulan1999/go-dag/internal/pipeline"
 )
 
 type Server struct {
@@ -24,10 +26,13 @@ func New(addr string) *Server {
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("/", homeHandler)
 
+	// Pipeline API group
+	mux.HandleFunc("POST /pipelines", pipeline.CreateHandler)
+
 	return &Server{
 		&http.Server{
 			Addr:              addr,
-			Handler:           mux,
+			Handler:           RequestLogger(mux),
 			ReadHeaderTimeout: time.Duration(readHeaderTimeout) * time.Second,
 			WriteTimeout:      time.Duration(writeTimeout) * time.Second,
 		},

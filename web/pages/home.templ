@@ -1,11 +1,12 @@
 package pages
 
-import (
-	"github.com/vulan1999/go-dag/web/layouts"
-)
+import "github.com/vulan1999/go-dag/web/layouts"
 
-templ Home(){
-    @layouts.Base("Home"){
-        <h1>Home Page</h1>
-    }
+templ Home() {
+	@layouts.Base("Home") {
+		<section>
+			<h1>Welcome to Flow</h1>
+			<p>Let's design and execute your ETL data pipeline</p>
+		</section>
+	}
 }
