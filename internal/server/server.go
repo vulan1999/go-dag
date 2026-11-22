@@ -24,7 +24,7 @@ func New(addr string) *Server {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
-	mux.HandleFunc("/", homeHandler)
+	mux.HandleFunc("GET /{$}", homeHandler)
 
 	// Pipeline API group
 	mux.HandleFunc("POST /pipelines", pipeline.CreateHandler)

@@ -40,7 +40,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	// Initial new pipeline object
 	p := Pipeline{
 		ID:    uuid.NewString(),
-		Name:  req.Name,
+		Name:  strings.TrimSpace(req.Name),
 		Nodes: req.Nodes,
 		Edges: req.Edge,
 	}
