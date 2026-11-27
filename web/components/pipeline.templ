@@ -1,0 +1,83 @@
+package components
+
+import "fmt"
+
+type PipelineView struct {
+	ID        string
+	Name      string
+	NodesJSON string
+	EdgesJSON string
+	NodeCount int
+	EdgeCount int
+}
+
+templ PipelineRow(p PipelineView) {
+	<tr id={ "pipeline-" + p.ID }>
+		<td class="mono">{ p.ID }</td>
+		<td>{ p.Name }</td>
+		<td>{ fmt.Sprintf("%d", p.NodeCount) }</td>
+		<td>{ fmt.Sprintf("%d", p.EdgeCount) }</td>
+		<td class="actions">
+			<button
+				type="button"
+				class="btn"
+				hx-get={ "/pipelines/" + p.ID }
+				hx-target={ "#pipeline-" + p.ID }
+				hx-swap="outerHTML"
+			>
+				Edit
+			</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				hx-delete={ "/pipelines/" + p.ID }
+				hx-target={ "#pipeline-" + p.ID }
+				hx-swap="outerHTML"
+				hx-confirm="Are you sure you want to delete this pipeline?"
+			>
+				Delete
+			</button>
+		</td>
+	</tr>
+}
+
+templ PipelineEditRow(p PipelineView, errMsg string) {
+	<tr id={ "pipeline-" + p.ID }>
+		<td class="mono">{ p.ID }</td>
+		<td colspan="4">
+			<form
+				hx-put={ "/pipelines/" + p.ID }
+				hx-target={ "#pipeline-" + p.ID }
+				hx-swap="outerHTML"
+			>
+				<div class="form-group">
+					<label for={ "name-" + p.ID }>Name</label>
+					<input id={ "name-" + p.ID } type="text" name="name" value={ p.Name } required/>
+				</div>
+				<div class="form-group">
+					<label for={ "nodes-" + p.ID }>Nodes (JSON)</label>
+					<textarea id={ "nodes-" + p.ID } name="nodes" rows="3">{ p.NodesJSON }</textarea>
+				</div>
+				<div class="form-group">
+					<label for={ "edges-" + p.ID }>Edges (JSON)</label>
+					<textarea id={ "edges-" + p.ID } name="edges" rows="3">{ p.EdgesJSON }</textarea>
+				</div>
+				if errMsg != "" {
+					<div class="error">{ errMsg }</div>
+				}
+				<div class="actions">
+					<button type="submit" class="btn btn-primary">Save</button>
+					<button
+						type="button"
+						class="btn"
+						hx-get={ "/pipelines/" + p.ID + "?mode=view" }
+						hx-target={ "#pipeline-" + p.ID }
+						hx-swap="outerHTML"
+					>
+						Cancel
+					</button>
+				</div>
+			</form>
+		</td>
+	</tr>
+}

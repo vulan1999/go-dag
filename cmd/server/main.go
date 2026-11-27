@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/vulan1999/go-dag/internal/pipeline"
 	"github.com/vulan1999/go-dag/internal/server"
 )
 
@@ -31,7 +34,19 @@ func main() {
 		log.Fatalf("Invalid server cancle timeout second, the value of SERVER_CANCLE_TIMEOUT variable must be a positive integer and greater than 0")
 	}
 
-	server := server.New(":" + serverPort)
+	dbPath := server.GetEnvValue("DB_PATH", "flow.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		log.Fatalf("Failed to open SQLite database: %v", err)
+	}
+	defer db.Close()
+
+	pipelineRepo, err := pipeline.NewSQLiteRepository(db)
+	if err != nil {
+		log.Fatalf("Failed to initialize pipeline repository: %v", err)
+	}
+
+	server := server.New(":"+serverPort, pipelineRepo)
 
 	go func() {
 		log.Printf("Listening on port :%s", serverPort)

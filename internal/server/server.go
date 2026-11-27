@@ -14,7 +14,7 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func New(addr string) *Server {
+func New(addr string, pipelineRepo pipeline.Repository) *Server {
 	readHeaderTimeout, _ := strconv.Atoi(GetEnvValue("READ_HEADER_TIMEOUT", "20"))
 	writeTimeout, _ := strconv.Atoi(GetEnvValue("WRITE_TIMEOUT", "20"))
 
@@ -25,9 +25,15 @@ func New(addr string) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("GET /{$}", homeHandler)
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
-	// Pipeline API group
-	mux.HandleFunc("POST /pipelines", pipeline.CreateHandler)
+	// Pipeline API & UI group
+	pipelineHandler := pipeline.NewHandler(pipelineRepo)
+	mux.HandleFunc("GET /pipelines", pipelineHandler.List)
+	mux.HandleFunc("POST /pipelines", pipelineHandler.Create)
+	mux.HandleFunc("GET /pipelines/{id}", pipelineHandler.GetByID)
+	mux.HandleFunc("PUT /pipelines/{id}", pipelineHandler.Update)
+	mux.HandleFunc("DELETE /pipelines/{id}", pipelineHandler.Delete)
 
 	return &Server{
 		&http.Server{

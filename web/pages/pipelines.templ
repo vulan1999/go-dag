@@ -1,0 +1,57 @@
+package pages
+
+import (
+	"github.com/vulan1999/go-dag/web/components"
+	"github.com/vulan1999/go-dag/web/layouts"
+)
+
+templ Pipelines(pipelines []components.PipelineView) {
+	@layouts.Base("Pipelines") {
+		<section>
+			<h1>Pipelines</h1>
+			<div class="card">
+				<h2>Create Pipeline</h2>
+				<form
+					hx-post="/pipelines"
+					hx-target="#pipeline-list"
+					hx-swap="beforeend"
+					hx-on::after-request="if(event.detail.successful){ this.reset(); document.getElementById('create-error').textContent=''; }"
+				>
+					<div class="form-group">
+						<label for="pipeline-name">Name</label>
+						<input id="pipeline-name" type="text" name="name" placeholder="e.g. Daily ETL" required/>
+					</div>
+					<div class="form-group">
+						<label for="pipeline-nodes">Nodes (JSON array)</label>
+						<textarea id="pipeline-nodes" name="nodes" rows="3" placeholder="[]">[]</textarea>
+					</div>
+					<div class="form-group">
+						<label for="pipeline-edges">Edges (JSON array)</label>
+						<textarea id="pipeline-edges" name="edges" rows="2" placeholder="[]">[]</textarea>
+					</div>
+					<div id="create-error" class="error"></div>
+					<button type="submit" class="btn btn-primary">Create Pipeline</button>
+				</form>
+			</div>
+			<div class="card">
+				<h2>All Pipelines</h2>
+				<table>
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Name</th>
+							<th>Nodes</th>
+							<th>Edges</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody id="pipeline-list">
+						for _, p := range pipelines {
+							@components.PipelineRow(p)
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	}
+}
