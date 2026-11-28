@@ -1,0 +1,186 @@
+package components
+
+import "strings"
+
+type MappingPair struct {
+	Key   string
+	Value string
+}
+
+type StageConfigValues struct {
+	Driver      string
+	DSN         string
+	Query       string
+	Columns     string
+	RenamePairs []MappingPair
+	SetPairs    []MappingPair
+	Table       string
+}
+
+func defaultString(val, fallback string) string {
+	if strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	return val
+}
+
+func initialRenamePairs(vals StageConfigValues, availableCols []string) []MappingPair {
+	if len(vals.RenamePairs) > 0 {
+		return vals.RenamePairs
+	}
+	if len(availableCols) > 0 {
+		pairs := make([]MappingPair, 0, len(availableCols))
+		for _, col := range availableCols {
+			pairs = append(pairs, MappingPair{Key: col})
+		}
+		return pairs
+	}
+	return []MappingPair{{}}
+}
+
+templ OutputColumnsInput(value string) {
+	<input id="cfg-columns" type="text" name="columns" value={ value } placeholder="e.g. id, name"/>
+}
+
+templ StageConfigFields(stageType string, transformedCols []string) {
+	@StageConfigFieldsWithValues(stageType, StageConfigValues{}, transformedCols)
+}
+
+templ StageConfigFieldsWithValues(stageType string, vals StageConfigValues, transformedCols []string) {
+	switch stageType {
+		case "db_source":
+			<div class="form-group">
+				<label for="cfg-driver">Driver</label>
+				<input id="cfg-driver" type="text" name="driver" value={ defaultString(vals.Driver, "sqlite3") } required/>
+			</div>
+			<div class="form-group">
+				<label for="cfg-dsn">DSN (Database Path)</label>
+				<input id="cfg-dsn" type="text" name="dsn" value={ vals.DSN } placeholder="e.g. db_a.sqlite" required/>
+			</div>
+			<div class="form-group">
+				<label for="cfg-query">SQL Query</label>
+				<textarea
+					id="cfg-query"
+					name="query"
+					rows="2"
+					placeholder="SELECT id, name FROM users"
+					hx-get="/stages/sql-columns"
+					hx-trigger="input changed delay:300ms, change"
+					hx-target="#cfg-columns-wrapper"
+					hx-swap="innerHTML"
+					hx-include="closest form"
+					required
+				>{ vals.Query }</textarea>
+			</div>
+			<div class="form-group">
+				<label for="cfg-columns">Output Columns (comma-separated)</label>
+				<div id="cfg-columns-wrapper">
+					@OutputColumnsInput(vals.Columns)
+				</div>
+			</div>
+		case "transform":
+			<div class="mapping-section">
+				<div class="mapping-header">
+					<label>Column Mapping (Source &rarr; Target)</label>
+					<button type="button" class="btn btn-sm" onclick="addMappingRow(this, 'rename')">+ Add Mapping</button>
+				</div>
+				<div class="mapping-rows" data-mapping-list="rename">
+					for _, pair := range initialRenamePairs(vals, transformedCols) {
+						<div class="mapping-row">
+							<input type="text" name="rename_from[]" value={ pair.Key } placeholder="Source column"/>
+							<span class="mapping-arrow">&rarr;</span>
+							<input type="text" name="rename_to[]" value={ pair.Value } placeholder="Target column (optional)"/>
+							<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.mapping-row').remove()">&times;</button>
+						</div>
+					}
+				</div>
+			</div>
+			<div class="mapping-section">
+				<div class="mapping-header">
+					<label>Static Fields (Field = Value)</label>
+					<button type="button" class="btn btn-sm" onclick="addMappingRow(this, 'set')">+ Add Static Field</button>
+				</div>
+				<div class="mapping-rows" data-mapping-list="set">
+					for _, pair := range vals.SetPairs {
+						<div class="mapping-row">
+							<input type="text" name="set_key[]" value={ pair.Key } placeholder="Field name"/>
+							<span class="mapping-arrow">=</span>
+							<input type="text" name="set_val[]" value={ pair.Value } placeholder="Static value"/>
+							<button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.mapping-row').remove()">&times;</button>
+						</div>
+					}
+				</div>
+			</div>
+		case "db_sink":
+			if len(transformedCols) > 0 {
+				<div class="hint">
+					<strong>Transformed Columns:</strong>
+					<span class="mono">{ strings.Join(transformedCols, ", ") }</span>
+				</div>
+			}
+			<div class="form-group">
+				<label for="cfg-driver">Driver</label>
+				<input id="cfg-driver" type="text" name="driver" value={ defaultString(vals.Driver, "sqlite3") } required/>
+			</div>
+			<div class="form-group">
+				<label for="cfg-dsn">DSN (Database Path)</label>
+				<input id="cfg-dsn" type="text" name="dsn" value={ vals.DSN } placeholder="e.g. db_b.sqlite" required/>
+			</div>
+			<div class="form-group">
+				<label for="cfg-table">Target Table</label>
+				<input id="cfg-table" type="text" name="table" value={ vals.Table } placeholder="e.g. target_users" required/>
+			</div>
+			<div class="form-group">
+				<label for="cfg-columns">Target Columns (comma-separated)</label>
+				<input id="cfg-columns" type="text" name="columns" value={ defaultString(vals.Columns, strings.Join(transformedCols, ", ")) } placeholder="e.g. id, full_name" required/>
+			</div>
+		default:
+			<p class="muted">Select a stage type to configure.</p>
+	}
+}
+
+templ NodeEditCard(pipelineID string, nodeID string, stageType string, vals StageConfigValues, transformedCols []string, errMsg string) {
+	<div class="card" id="node-edit-card">
+		<div class="dag-node-header">
+			<h3>Edit Stage: <span class="mono">{ nodeID }</span></h3>
+			<button
+				type="button"
+				class="btn btn-sm"
+				onclick="document.getElementById('node-inspector').innerHTML=''"
+			>
+				Cancel
+			</button>
+		</div>
+		if errMsg != "" {
+			<div class="error" role="alert">{ errMsg }</div>
+		}
+		<form
+			hx-put={ "/pipelines/" + pipelineID + "/nodes/" + nodeID }
+			hx-target="#dag-workspace"
+			hx-swap="outerHTML"
+		>
+			<div class="form-group">
+				<label for="edit-node-type">Stage Type</label>
+				<select
+					id="edit-node-type"
+					name="type"
+					hx-get={ "/pipelines/" + pipelineID + "/stages/config-fields" }
+					hx-target="#edit-stage-config-fields"
+					hx-swap="innerHTML"
+					hx-trigger="change"
+					required
+				>
+					<option value="db_source" selected?={ stageType == "db_source" }>db_source</option>
+					<option value="transform" selected?={ stageType == "transform" }>transform</option>
+					<option value="db_sink" selected?={ stageType == "db_sink" }>db_sink</option>
+				</select>
+			</div>
+			<div id="edit-stage-config-fields">
+				@StageConfigFieldsWithValues(stageType, vals, transformedCols)
+			</div>
+			<div class="actions">
+				<button type="submit" class="btn btn-primary">Save Changes</button>
+			</div>
+		</form>
+	</div>
+}

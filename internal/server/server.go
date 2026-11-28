@@ -34,6 +34,15 @@ func New(addr string, pipelineRepo pipeline.Repository) *Server {
 	mux.HandleFunc("GET /pipelines/{id}", pipelineHandler.GetByID)
 	mux.HandleFunc("PUT /pipelines/{id}", pipelineHandler.Update)
 	mux.HandleFunc("DELETE /pipelines/{id}", pipelineHandler.Delete)
+	mux.HandleFunc("GET /pipelines/{id}/dag", pipelineHandler.GetDAG)
+	mux.HandleFunc("GET /stages/sql-columns", pipelineHandler.GetSQLColumns)
+	mux.HandleFunc("GET /pipelines/{id}/stages/config-fields", pipelineHandler.GetStageConfigFields)
+	mux.HandleFunc("POST /pipelines/{id}/nodes", pipelineHandler.AddNode)
+	mux.HandleFunc("GET /pipelines/{id}/nodes/{nodeId}", pipelineHandler.GetNode)
+	mux.HandleFunc("PUT /pipelines/{id}/nodes/{nodeId}", pipelineHandler.UpdateNode)
+	mux.HandleFunc("DELETE /pipelines/{id}/nodes/{nodeId}", pipelineHandler.DeleteNode)
+	mux.HandleFunc("POST /pipelines/{id}/edges", pipelineHandler.AddEdge)
+	mux.HandleFunc("DELETE /pipelines/{id}/edges", pipelineHandler.DeleteEdge)
 
 	return &Server{
 		&http.Server{

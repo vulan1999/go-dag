@@ -1,0 +1,22 @@
+package pages
+
+import (
+	"github.com/vulan1999/go-dag/web/components"
+	"github.com/vulan1999/go-dag/web/layouts"
+)
+
+templ PipelineDAG(view components.DAGView) {
+	@layouts.Base(view.PipelineName + " - DAG") {
+		<section>
+			<div class="dag-page-header">
+				<div>
+					<a href="/pipelines" class="back-link">&larr; Back to Pipelines</a>
+					<h1>{ view.PipelineName }</h1>
+					<span class="mono">ID: { view.PipelineID }</span>
+				</div>
+			</div>
+			@components.DAGWorkspace(view, "")
+			<script src="/static/js/dag.js"></script>
+		</section>
+	}
+}

@@ -1,0 +1,195 @@
+package components
+
+import "encoding/json"
+
+type DAGNodeView struct {
+	ID         string
+	Type       string
+	ConfigJSON string
+	Columns    []string
+	Parents    []string
+	Children   []string
+}
+
+type DAGEdgeView struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type DAGView struct {
+	PipelineID   string
+	PipelineName string
+	Waves        [][]DAGNodeView
+	Nodes        []DAGNodeView
+	Edges        []DAGEdgeView
+	Valid        bool
+	ErrorMsg     string
+}
+
+func marshalEdgesJSON(edges []DAGEdgeView) string {
+	if edges == nil {
+		return "[]"
+	}
+	b, err := json.Marshal(edges)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+templ DAGWorkspace(view DAGView, formErr string) {
+	<div id="dag-workspace">
+		<div class="dag-status-bar">
+			if view.Valid {
+				<span class="badge badge-success">Valid DAG</span>
+			} else {
+				<span class="badge badge-error">Invalid DAG: { view.ErrorMsg }</span>
+			}
+			if formErr != "" {
+				<div class="error" role="alert">{ formErr }</div>
+			}
+		</div>
+
+		<div class="card">
+			<h2>Workflow Canvas</h2>
+			if len(view.Nodes) == 0 {
+				<p class="muted">No stages yet. Add a stage below to start building your DAG.</p>
+			} else {
+				<div class="dag-canvas" id="dag-canvas" data-edges={ marshalEdgesJSON(view.Edges) }>
+					<svg class="dag-edges" id="dag-edges" aria-hidden="true"></svg>
+					<div class="dag-waves">
+						for _, wave := range view.Waves {
+							<div class="dag-wave">
+								for _, node := range wave {
+									<div
+										class="dag-node"
+										data-node-id={ node.ID }
+										title="Click to edit stage properties"
+										hx-get={ "/pipelines/" + view.PipelineID + "/nodes/" + node.ID }
+										hx-target="#node-inspector"
+										hx-swap="innerHTML"
+									>
+										<div class="dag-node-header">
+											<span class="dag-node-id">{ node.ID }</span>
+											<span class="badge">{ node.Type }</span>
+										</div>
+										if len(node.Columns) > 0 {
+											<div class="dag-node-cols">
+												for _, col := range node.Columns {
+													<span class="col-chip">{ col }</span>
+												}
+											</div>
+										}
+										<pre class="dag-node-config">{ node.ConfigJSON }</pre>
+										<div class="dag-node-footer">
+											<button
+												type="button"
+												class="btn btn-danger btn-sm"
+												hx-on:click="event.stopPropagation()"
+												hx-delete={ "/pipelines/" + view.PipelineID + "/nodes/" + node.ID }
+												hx-target="#dag-workspace"
+												hx-swap="outerHTML"
+												hx-confirm={ "Remove stage " + node.ID + " and its edges?" }
+											>
+												Remove
+											</button>
+										</div>
+									</div>
+								}
+							</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+
+		<div id="node-inspector"></div>
+
+		<div class="dag-controls">
+			<div class="card">
+				<h3>Add Stage</h3>
+				<form
+					hx-post={ "/pipelines/" + view.PipelineID + "/nodes" }
+					hx-target="#dag-workspace"
+					hx-swap="outerHTML"
+				>
+					<div class="form-group">
+						<label for="node-id">Stage ID</label>
+						<input id="node-id" type="text" name="id" placeholder="e.g. extract_users" required/>
+					</div>
+					<div class="form-group">
+						<label for="node-type">Stage Type</label>
+						<select
+							id="node-type"
+							name="type"
+							hx-get={ "/pipelines/" + view.PipelineID + "/stages/config-fields" }
+							hx-target="#stage-config-fields"
+							hx-swap="innerHTML"
+							hx-trigger="change"
+							required
+						>
+							<option value="db_source" selected>db_source</option>
+							<option value="transform">transform</option>
+							<option value="db_sink">db_sink</option>
+						</select>
+					</div>
+					<div id="stage-config-fields">
+						@StageConfigFields("db_source", nil)
+					</div>
+					<button type="submit" class="btn btn-primary">Add Stage</button>
+				</form>
+			</div>
+
+			<div class="card">
+				<h3>Connect Stages</h3>
+				if len(view.Nodes) < 2 {
+					<p class="muted">Add at least two stages to create an edge.</p>
+				} else {
+					<form
+						hx-post={ "/pipelines/" + view.PipelineID + "/edges" }
+						hx-target="#dag-workspace"
+						hx-swap="outerHTML"
+					>
+						<div class="form-group">
+							<label for="edge-from">From</label>
+							<select id="edge-from" name="from" required>
+								for _, n := range view.Nodes {
+									<option value={ n.ID }>{ n.ID }</option>
+								}
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="edge-to">To</label>
+							<select id="edge-to" name="to" required>
+								for _, n := range view.Nodes {
+									<option value={ n.ID }>{ n.ID }</option>
+								}
+							</select>
+						</div>
+						<button type="submit" class="btn btn-primary">Add Edge</button>
+					</form>
+				}
+
+				if len(view.Edges) > 0 {
+					<h4 class="edges-heading">Edges</h4>
+					<ul class="edge-list">
+						for _, e := range view.Edges {
+							<li class="edge-item">
+								<span class="mono">{ e.From } &rarr; { e.To }</span>
+								<button
+									type="button"
+									class="btn btn-danger btn-sm"
+									hx-delete={ "/pipelines/" + view.PipelineID + "/edges?from=" + e.From + "&to=" + e.To }
+									hx-target="#dag-workspace"
+									hx-swap="outerHTML"
+								>
+									Remove
+								</button>
+							</li>
+						}
+					</ul>
+				}
+			</div>
+		</div>
+	</div>
+}
